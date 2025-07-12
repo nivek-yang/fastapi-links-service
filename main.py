@@ -1,12 +1,20 @@
+import os  # 導入 os 模組
+
 from fastapi import FastAPI, status
+from motor.motor_asyncio import AsyncIOMotorClient  # 導入 motor
 from pydantic import BaseModel
 
 
-# 定義一個通用的響應模型，只包含 success 和 message
+# 定義一個通用的響應模型
 class APIResponse(BaseModel):
     success: bool
     message: str
 
+
+# 定義 MongoDB 連接資訊
+MONGO_HOST = os.environ.get("MONGO_HOST", "localhost")
+MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
+MONGO_DB = os.environ.get("MONGO_DB", "links_db")
 
 app = FastAPI(
     title="FastAPI Links Service",
@@ -15,12 +23,41 @@ app = FastAPI(
 )
 
 
+# FastAPI 應用啟動時連接 MongoDB
+@app.on_event("startup")
+async def startup_db_client():
+    app.mongodb_client = AsyncIOMotorClient(f"mongodb://{MONGO_HOST}:{MONGO_PORT}")
+    app.mongodb = app.mongodb_client[MONGO_DB]
+    print(f"Connected to MongoDB: {MONGO_DB} on {MONGO_HOST}:{MONGO_PORT}")
+
+
+# FastAPI 應用關閉時關閉 MongoDB 連接
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    app.mongodb_client.close()
+    print("Disconnected from MongoDB.")
+
+
 @app.get("/health", tags=["Health Check"], response_model=APIResponse)
 async def health_check():
     """
     Health check endpoint to verify service status.
     """
     return APIResponse(success=True, message="FastAPI Links Service is running!")
+
+
+# 測試 MongoDB 連接的端點
+@app.get("/db-check", tags=["Health Check"], response_model=APIResponse)
+async def db_check():
+    """
+    Check MongoDB connection status.
+    """
+    try:
+        # 嘗試列出一個集合，以驗證連接是否活躍
+        await app.mongodb.list_collection_names()
+        return APIResponse(success=True, message="MongoDB connection is successful!")
+    except Exception as e:
+        return APIResponse(success=False, message=f"MongoDB connection failed: {e}")
 
 
 # 範例：一個模擬的短網址創建端點，展示如何使用 APIResponse 和自定義狀態碼
@@ -35,7 +72,6 @@ async def create_link_example():
     Example endpoint to demonstrate Django-like JSON response.
     """
     # 這裡會是實際創建短網址的邏輯
-    # 注意：short_url 和 original_url 不再是 APIResponse 的一部分
 
     return APIResponse(
         success=True,
