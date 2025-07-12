@@ -1,9 +1,11 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, status
+from fastapi import Depends, FastAPI, status
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
+
+from . import security
 
 
 # 定義一個通用的響應模型
@@ -99,3 +101,8 @@ async def create_link_error_example():
         success=False,
         message="Original URL is required.",
     )
+
+
+@app.get("/users/me", tags=["Users"], response_model=security.TokenData)
+async def read_users_me(current_user: security.TokenData = Depends(security.get_current_user)):
+    return current_user
