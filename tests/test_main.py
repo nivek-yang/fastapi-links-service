@@ -9,8 +9,8 @@ def test_health_check():
 
 
 def test_db_check():
-    client = TestClient(app)
-    response = client.get("/db-check")
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-    assert "MongoDB connection is successful!" in response.json()["message"]
+    with TestClient(app) as client:
+        response = client.get("/db-check")
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert "MongoDB connection is successful!" in response.json()["message"]
