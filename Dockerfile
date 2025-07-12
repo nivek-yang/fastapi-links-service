@@ -9,15 +9,14 @@ WORKDIR /app
 COPY pyproject.toml uv.lock /app/
 
 # 安裝依賴
+RUN uv venv
+RUN uv lock
 RUN uv sync
+
+ENV PATH="/app/.venv/bin:$PATH"
 
 # 複製應用程式碼
 COPY . /app/
-
-# 設定環境變數 (如果需要，可以在這裡設定預設值，但通常透過 docker-compose 或 .env 傳遞)
-# ENV MONGO_HOST=mongodb
-# ENV MONGO_PORT=27017
-# ENV MONGO_DB=links_db
 
 EXPOSE 8001
 
