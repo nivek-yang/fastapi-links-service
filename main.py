@@ -1,7 +1,8 @@
-import os  # 導入 os 模組
+import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, status
-from motor.motor_asyncio import AsyncIOMotorClient  # 導入 motor
+from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
 
@@ -16,26 +17,30 @@ MONGO_HOST = os.environ.get("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
 MONGO_DB = os.environ.get("MONGO_DB", "links_db")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.mongodb_client = AsyncIOMotorClient(f"mongodb://{MONGO_HOST}:{MONGO_PORT}")
+    app.mongodb = app.mongodb_client[MONGO_DB]
+    print(f"Connected to MongoDB: {MONGO_DB} on {MONGO_HOST}:{MONGO_PORT}")
+    # 強制檢查連線
+    try:
+        await app.mongodb.list_collection_names()
+        print("MongoDB connection test passed.")
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
+        # 可以選擇 raise 或只警告
+    yield
+    app.mongodb_client.close()
+    print("Disconnected from MongoDB.")
+
+
 app = FastAPI(
     title="FastAPI Links Service",
     description="API service for managing short links.",
     version="0.1.0",
+    lifespan=lifespan,  # 將 lifespan 傳遞給 FastAPI 應用
 )
-
-
-# FastAPI 應用啟動時連接 MongoDB
-@app.on_event("startup")
-async def startup_db_client():
-    app.mongodb_client = AsyncIOMotorClient(f"mongodb://{MONGO_HOST}:{MONGO_PORT}")
-    app.mongodb = app.mongodb_client[MONGO_DB]
-    print(f"Connected to MongoDB: {MONGO_DB} on {MONGO_HOST}:{MONGO_PORT}")
-
-
-# FastAPI 應用關閉時關閉 MongoDB 連接
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    app.mongodb_client.close()
-    print("Disconnected from MongoDB.")
 
 
 @app.get("/health", tags=["Health Check"], response_model=APIResponse)
