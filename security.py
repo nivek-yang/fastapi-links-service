@@ -1,5 +1,4 @@
 import os
-from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -9,10 +8,11 @@ from pydantic import BaseModel
 
 # This must be the same secret key as in the Django project.
 # It's recommended to load this from an environment variable.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'your-default-secret-key')
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-default-secret-key")
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 class TokenData(BaseModel):
     user_id: int | None = None
